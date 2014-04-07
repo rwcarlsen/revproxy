@@ -9,24 +9,26 @@ import (
 	"strings"
 )
 
-var target = flag.String("target", "", "url to forward to")
-var sub = flag.String("subdomain", "", "subdomain that should be forwarded")
 var addr = flag.String("addr", "", "address to listen on")
 
 var proxys = map[string]*httputil.ReverseProxy{}
 
+// positional args are [<subdomain> <target-addr>]...
 func main() {
 	flag.Parse()
-	remote, err := url.Parse("http://" + *target)
-	if err != nil {
-		log.Fatal(err)
+
+	for i := 0; i < len(flag.Args()); i += 2 {
+		subdomain := flag.Arg(i)
+		target := flag.Arg(i + 1)
+		remote, err := url.Parse("http://" + target)
+		if err != nil {
+			log.Fatal(err)
+		}
+		proxys[subdomain] = httputil.NewSingleHostReverseProxy(remote)
 	}
 
-	proxy := httputil.NewSingleHostReverseProxy(remote)
-	proxys[*sub] = proxy
-
 	http.HandleFunc("/", handler)
-	err = http.ListenAndServe(*addr, nil)
+	err := http.ListenAndServe(*addr, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
